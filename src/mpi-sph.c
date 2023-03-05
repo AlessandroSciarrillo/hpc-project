@@ -39,10 +39,12 @@
 #endif
 #endif
 
+#include "hpc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <mpi.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -177,10 +179,14 @@ void compute_density_pressure( void )
        et al. */
     const float POLY6 = 4.0 / (M_PI * pow(H, 8));
 
-    for (int i=0; i<n_particles; i++) { // IO for
+    printf("*** Dentro a Compute\n"); // la stampano i 6 processori (core)
+
+    // TODO dividere il lavoro sui processori
+
+    for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
         pi->rho = 0.0;
-        for (int j=0; j<n_particles; j++) { // reduce(pi->rho:+)  assegnare sempre una variabile e metterla a 0 o con valore nell if
+        for (int j=0; j<n_particles; j++) {
             const particle_t *pj = &particles[j];
 
             const float dx = pj->x - pi->x;
@@ -213,7 +219,7 @@ void compute_forces( void )
             const particle_t *pj = &particles[j];
 
             if (pi == pj)
-                continue; // IO esce dal for
+                continue;
 
             const float dx = pj->x - pi->x;
             const float dy = pj->y - pi->y;
@@ -270,7 +276,7 @@ void integrate( void )
 float avg_velocities( void )
 {
     double result = 0.0;
-    for (int i=0; i<n_particles; i++) { // IO reduce
+    for (int i=0; i<n_particles; i++) {
         /* the hypot(x,y) function is equivalent to sqrt(x*x +
            y*y); */
         result += hypot(particles[i].vx, particles[i].vy) / n_particles;
@@ -399,6 +405,8 @@ int main(int argc, char **argv)
 #else
     int n = DAM_PARTICLES;
     int nsteps = 50;
+    int my_rank, comm_sz;
+    double tstart, tfinish;
 
     if (argc > 3) {
         fprintf(stderr, "Usage: %s [nparticles [nsteps]]\n", argv[0]);
@@ -418,7 +426,27 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    init_sph(n);
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+
+    if(0 == my_rank){
+        init_sph(n);
+        tstart = hpc_gettime();
+
+        printf("Size: %d\n", comm_sz);
+    }
+    //printf("My_rank: %d\n", my_rank);
+
+    //TODO Broadcast di particles a tutti gli altri processi
+    /*MPI_Bcast(
+        void *buffer, 
+        int count, 
+        MPI_Datatype datatype,
+        int root,
+        MPI_Comm comm);*/
+  
     for (int s=0; s<nsteps; s++) {
         update();
         /* the average velocities MUST be computed at each step, even
@@ -428,7 +456,17 @@ int main(int argc, char **argv)
         if (s % 10 == 0)
             printf("step %5d, avgV=%f\n", s, avg);
     }
+
+    tfinish = hpc_gettime();
+    MPI_Finalize();
+
+    printf("Elapsed time: %e seconds\n", tfinish - tstart);
+
 #endif
     free(particles);
     return EXIT_SUCCESS;
 }
+
+
+// mpicc -std=c99 -Wall -Wpedantic mpi-sph.c -o mpi-sph -lm
+// mpirun ./mpi-sph 20000 10

@@ -179,15 +179,12 @@ void compute_density_pressure( void )
        et al. */
     const float POLY6 = 4.0 / (M_PI * pow(H, 8));
 
-    //omp_set_nested(1);
 #pragma omp parallel for default(none) shared(particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST)
-    for (int i=0; i<n_particles; i++) { 
+    for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
         pi->rho = 0.0;
 
-        //float red_rho = 0.0;
-//#pragma omp parallel for reduction(+:red_rho) default(none) shared(pi, particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST)
-        for (int j=0; j<n_particles; j++) { 
+        for (int j=0; j<n_particles; j++) {
             const particle_t *pj = &particles[j];
 
             const float dx = pj->x - pi->x;
@@ -196,10 +193,8 @@ void compute_density_pressure( void )
 
             if (d2 < HSQ) {
                 pi->rho += MASS * POLY6 * pow(HSQ - d2, 3.0); 
-                //red_rho += MASS * POLY6 * pow(HSQ - d2, 3.0);
             }
         }
-        //pi->rho = red_rho;
         pi->p = GAS_CONST * (pi->rho - REST_DENS);
     }
 }
@@ -219,7 +214,6 @@ void compute_forces( void )
         float fpress_x = 0.0, fpress_y = 0.0;
         float fvisc_x = 0.0, fvisc_y = 0.0;
 
-//#pragma omp parallel for reduction(+:fpress_x) reduction(+:fpress_y) reduction(+:fvisc_x) reduction(+:fvisc_y) default(none) shared(pi, particles, n_particles, MASS, SPIKY_GRAD, VISC, VISC_LAP, H, EPS, Gx, Gy)
         for (int j=0; j<n_particles; j++) {
             const particle_t *pj = &particles[j];
 
@@ -413,6 +407,7 @@ int main(int argc, char **argv)
 #else
     int n = DAM_PARTICLES;
     int nsteps = 50;
+    double tstart, tfinish;
 
     if (argc > 3) {
         fprintf(stderr, "Usage: %s [nparticles [nsteps]]\n", argv[0]);
@@ -434,7 +429,7 @@ int main(int argc, char **argv)
 
     init_sph(n);
 
-    double tstart, tfinish;
+    
     tstart = hpc_gettime();
 
     for (int s=0; s<nsteps; s++) {
