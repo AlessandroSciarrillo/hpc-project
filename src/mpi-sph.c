@@ -1,5 +1,8 @@
 /****************************************************************************
  *
+ * Alessandro Sciarrillo  
+ * 0000970435
+ * 
  * sph.c -- Smoothed Particle Hydrodynamics
  *
  * https://github.com/cerrno/mueller-sph

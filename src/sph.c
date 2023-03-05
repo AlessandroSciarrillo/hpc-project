@@ -36,6 +36,7 @@
 #endif
 #endif
 
+#include "hpc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -177,7 +178,7 @@ void compute_density_pressure( void )
     for (int i=0; i<n_particles; i++) { // IO for
         particle_t *pi = &particles[i];
         pi->rho = 0.0;
-        for (int j=0; j<n_particles; j++) { // reduce(pi->rho:+)  assegnare sempre una variabile e metterla a 0 o con valore nell if
+        for (int j=0; j<n_particles; j++) { // IO reduce(pi->rho:+)  assegnare sempre una variabile e metterla a 0 o con valore nell if
             const particle_t *pj = &particles[j];
 
             const float dx = pj->x - pi->x;
@@ -210,7 +211,7 @@ void compute_forces( void )
             const particle_t *pj = &particles[j];
 
             if (pi == pj)
-                continue; // IO esce dal for
+                continue; // IO passa a iterazione successiva
 
             const float dx = pj->x - pi->x;
             const float dy = pj->y - pi->y;
@@ -416,6 +417,10 @@ int main(int argc, char **argv)
     }
 
     init_sph(n);
+
+    double tstart, tfinish;
+    tstart = hpc_gettime();
+
     for (int s=0; s<nsteps; s++) {
         update();
         /* the average velocities MUST be computed at each step, even
@@ -425,6 +430,9 @@ int main(int argc, char **argv)
         if (s % 10 == 0)
             printf("step %5d, avgV=%f\n", s, avg);
     }
+
+    tfinish = hpc_gettime();
+    printf("Elapsed time: %e seconds\n", tfinish - tstart);
 #endif
     free(particles);
     return EXIT_SUCCESS;

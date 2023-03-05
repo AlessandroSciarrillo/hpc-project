@@ -1,5 +1,8 @@
 /****************************************************************************
  *
+ * Alessandro Sciarrillo  
+ * 0000970435
+ * 
  * sph.c -- Smoothed Particle Hydrodynamics
  *
  * https://github.com/cerrno/mueller-sph
@@ -36,10 +39,12 @@
 #endif
 #endif
 
+#include "hpc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <omp.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -174,10 +179,15 @@ void compute_density_pressure( void )
        et al. */
     const float POLY6 = 4.0 / (M_PI * pow(H, 8));
 
-    for (int i=0; i<n_particles; i++) { // IO for
+    //omp_set_nested(1);
+#pragma omp parallel for default(none) shared(particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST)
+    for (int i=0; i<n_particles; i++) { 
         particle_t *pi = &particles[i];
         pi->rho = 0.0;
-        for (int j=0; j<n_particles; j++) { // reduce(pi->rho:+)  assegnare sempre una variabile e metterla a 0 o con valore nell if
+
+        //float red_rho = 0.0;
+//#pragma omp parallel for reduction(+:red_rho) default(none) shared(pi, particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST)
+        for (int j=0; j<n_particles; j++) { 
             const particle_t *pj = &particles[j];
 
             const float dx = pj->x - pi->x;
@@ -186,8 +196,10 @@ void compute_density_pressure( void )
 
             if (d2 < HSQ) {
                 pi->rho += MASS * POLY6 * pow(HSQ - d2, 3.0); 
+                //red_rho += MASS * POLY6 * pow(HSQ - d2, 3.0);
             }
         }
+        //pi->rho = red_rho;
         pi->p = GAS_CONST * (pi->rho - REST_DENS);
     }
 }
@@ -201,16 +213,18 @@ void compute_forces( void )
     const float VISC_LAP = 40.0 / (M_PI * pow(H, 5));
     const float EPS = 1e-6;
 
+#pragma omp parallel for default(none) shared(particles, n_particles, MASS, SPIKY_GRAD, VISC, VISC_LAP, H, EPS, Gx, Gy)
     for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
         float fpress_x = 0.0, fpress_y = 0.0;
         float fvisc_x = 0.0, fvisc_y = 0.0;
 
+//#pragma omp parallel for reduction(+:fpress_x) reduction(+:fpress_y) reduction(+:fvisc_x) reduction(+:fvisc_y) default(none) shared(pi, particles, n_particles, MASS, SPIKY_GRAD, VISC, VISC_LAP, H, EPS, Gx, Gy)
         for (int j=0; j<n_particles; j++) {
             const particle_t *pj = &particles[j];
 
             if (pi == pj)
-                continue; // IO esce dal for
+                continue;
 
             const float dx = pj->x - pi->x;
             const float dy = pj->y - pi->y;
@@ -236,6 +250,7 @@ void compute_forces( void )
 
 void integrate( void )
 {
+#pragma omp parallel for default(none) shared(particles, n_particles, DT, EPS, BOUND_DAMPING, VIEW_WIDTH, VIEW_HEIGHT)
     for (int i=0; i<n_particles; i++) {
         particle_t *p = &particles[i];
         // forward Euler integration
@@ -267,7 +282,9 @@ void integrate( void )
 float avg_velocities( void )
 {
     double result = 0.0;
-    for (int i=0; i<n_particles; i++) { // IO reduce
+
+#pragma omp parallel for reduction(+:result) default(none) shared(particles, n_particles)
+    for (int i=0; i<n_particles; i++) {
         /* the hypot(x,y) function is equivalent to sqrt(x*x +
            y*y); */
         result += hypot(particles[i].vx, particles[i].vy) / n_particles;
@@ -416,6 +433,10 @@ int main(int argc, char **argv)
     }
 
     init_sph(n);
+
+    double tstart, tfinish;
+    tstart = hpc_gettime();
+
     for (int s=0; s<nsteps; s++) {
         update();
         /* the average velocities MUST be computed at each step, even
@@ -425,7 +446,13 @@ int main(int argc, char **argv)
         if (s % 10 == 0)
             printf("step %5d, avgV=%f\n", s, avg);
     }
+
+    tfinish = hpc_gettime();
+    printf("Elapsed time: %e seconds\n", tfinish - tstart);
 #endif
     free(particles);
     return EXIT_SUCCESS;
 }
+
+
+// COMPILARE: gcc -std=c99 -Wall -Wpedantic -fopenmp omp-sph.c -o omp-sph -lm
