@@ -170,18 +170,15 @@ void init_sph( int n )
  ** You may parallelize the following four functions
  **/
 
-void compute_density_pressure( void )
+void compute_density_pressure( int n, int istart, int iend )
 {
     const float HSQ = H * H;    // radius^2 for optimization
 
     /* Smoothing kernels defined in Muller and their gradients adapted
        to 2D per "SPH Based Shallow Water Simulation" by Solenthaler
-       et al. */
-    const float POLY6 = 4.0 / (M_PI * pow(H, 8));
+       et al. */ 
+    const float POLY6 = 4.0 / (M_PI * pow(H, 8)); 
 
-    printf("*** Dentro a Compute\n"); // la stampano i 6 processori (core)
-
-    // TODO dividere il lavoro sui processori
 
     for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
@@ -201,7 +198,7 @@ void compute_density_pressure( void )
     }
 }
 
-void compute_forces( void )
+void compute_forces( int n, int istart, int iend )
 {
     /* Smoothing kernels defined in Muller and their gradients adapted
        to 2D per "SPH Based Shallow Water Simulation" by Solenthaler
@@ -243,7 +240,7 @@ void compute_forces( void )
     }
 }
 
-void integrate( void )
+void integrate( int n, int istart, int iend )
 {
     for (int i=0; i<n_particles; i++) {
         particle_t *p = &particles[i];
@@ -273,7 +270,7 @@ void integrate( void )
     }
 }
 
-float avg_velocities( void )
+float avg_velocities( int n, int istart, int iend )
 {
     double result = 0.0;
     for (int i=0; i<n_particles; i++) {
@@ -284,11 +281,45 @@ float avg_velocities( void )
     return result;
 }
 
-void update( void )
+void update( int n, int istart, int iend )
 {
-    compute_density_pressure();
-    compute_forces();
-    integrate();
+    /* Serve?
+    // Ogni processo si alloca un array per ogni attributo di particle
+    float *x = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *y = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *vx = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *vy = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *fx = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *fy = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *rho = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    float *p = (float*)malloc(n * sizeof(*float)); //TODO fare la free
+    */
+
+    // Usare Structure of Array invece di Array of Structure? --> modificare init_sph e tutti i metodi
+
+    /*
+    MPI_Bcast(
+        void *buffer, 
+        int count, 
+        MPI_Datatype datatype,
+        int root, 
+        MPI_Comm comm)
+    MPI_Allgather(
+        const void *sendbuf, 
+        int  sendcount,
+        MPI_Datatype sendtype, 
+        void *recvbuf, 
+        int recvcount,
+        MPI_Datatype recvtype, 
+        MPI_Comm comm)*/
+
+    // Bcast(x,y,vx,vy)
+    compute_density_pressure(n, istart, iend);
+    // Allgather(rho,p)
+    compute_forces(n, istart, iend);
+    // Allgather(fx,fy)
+    integrate(n, istart, iend);
+    // Allgather(x,y,vx,vy)
 }
 
 #ifdef GUI
@@ -439,20 +470,16 @@ int main(int argc, char **argv)
     }
     //printf("My_rank: %d\n", my_rank);
 
-    //TODO Broadcast di particles a tutti gli altri processi
-    /*MPI_Bcast(
-        void *buffer, 
-        int count, 
-        MPI_Datatype datatype,
-        int root,
-        MPI_Comm comm);*/
+    /* Compute the starting and ending position of each block */ 
+    const int istart = n*i/comm_sz;
+    const int iend = n*(i+1)/comm_sz;
   
     for (int s=0; s<nsteps; s++) {
-        update();
+        update(n, istart, iend);
         /* the average velocities MUST be computed at each step, even
            if it is not shown (to ensure constant workload per
            iteration) */
-        const float avg = avg_velocities();
+        const float avg = avg_velocities(n, istart, iend);
         if (s % 10 == 0)
             printf("step %5d, avgV=%f\n", s, avg);
     }
