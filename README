@@ -1,0 +1,48 @@
+# 1. Come compilare
+## 1.1. Utilizzando Makefile 
+Per compilare tramite Makefile aprire una shell ed utilizzare il comando make nelle modalità descritte in seguito.
+
+* Si possono compilare tutti i sorgenti con un unico comando:
+    ```
+    make
+    ```
+* Oppure si può compilare un singolo sorgente utilizzando i seguenti comandi.
+
+    - Per compilare solo omp-sph.c : 
+        ```
+        make omp-sph
+        ```
+    - Per compilare solo mpi-sph.c : 
+        ```
+        make mpi-sph
+        ```
+
+
+## 1.2. Manualmente
+Per compilare manualmente i sorgenti è necessario aprire una shell e lanciare i seguenti comandi.
+
+* Per compilare la versione OpenMP (omp-sph.c) : 
+    ```
+    gcc -std=c99 -Wall -Wpedantic -fopenmp omp-sph.c -o omp-sph -lm
+    ```
+* Per compilare la versione MPI (mpi-sph.c) : 
+    ```
+    mpicc -std=c99 -Wall -Wpedantic mpi-sph.c -o mpi-sph -lm
+    ```
+
+# 2. Come eseguire
+Prima di passare all'esecuzione è necessario aver compilato i file sorgenti con successo.
+Avendo a disposizione i file eseguibili è possibile lanciare i seguenti comandi in una shell, è anche possibile passare dei parametri.
+
+* Per eseguire la versione OpenMP : 
+    ```
+    ./omp-sph [N [S]]
+    ```
+* Per eseguire la versione MPI : 
+    ```
+    mpirun ./mpi-sph [N [S]]
+    ```
+
+I parametri a disposizione sono:
+- N : numero di particelle
+- S : numero di passi da simulare (intero maggiore o uguale a 0)

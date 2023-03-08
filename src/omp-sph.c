@@ -62,36 +62,21 @@ const float MASS = 2.5;         // assume all particles have the same mass
 const float VISC = 200;         // viscosity constant
 const float DT = 0.0007;        // integration timestep
 const float BOUND_DAMPING = -0.5;
-
-// rendering projection parameters
-// (the following ought to be "const float", but then the compiler
-// would give an error because VIEW_WIDTH and VIEW_HEIGHT are
-// initialized with non-literal expressions)
-#ifdef GUI
-
-const int MAX_PARTICLES = 5000;
-#define WINDOW_WIDTH 1024
-#define WINDOW_HEIGHT 768
-
-#else
-
 const int MAX_PARTICLES = 20000;
 // Larger window size to accommodate more particles
 #define WINDOW_WIDTH 3000
 #define WINDOW_HEIGHT 2000
 
-#endif
 
 const int DAM_PARTICLES = 500;
 
 const float VIEW_WIDTH = 1.5 * WINDOW_WIDTH;
 const float VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
 
-/* Particle data structure; stores position, velocity, and force for
-   integration stores density (rho) and pressure values for SPH.
-
-   You may choose a different layout of the particles[] data structure
-   to suit your needs. */
+/** 
+ * Particle data structure; stores position, velocity, and force for
+ * integration stores density (rho) and pressure values for SPH.
+ */
 typedef struct {
     float x, y;         // position
     float vx, vy;       // velocity
@@ -139,13 +124,6 @@ int is_in_domain( float x, float y )
  * Initialize the SPH model with `n` particles. The caller is
  * responsible for allocating the `particles[]` array of size
  * `MAX_PARTICLES`.
- *
- * DO NOT parallelize this function, since it calls rand() which is
- * not thread-safe.
- *
- * For MPI and OpenMP: only the master must initialize the domain;
- *
- * For CUDA: the CPU must initialize the domain.
  */
 void init_sph( int n )
 {
@@ -165,10 +143,6 @@ void init_sph( int n )
     }
     assert(n_particles == n);
 }
-
-/**
- ** You may parallelize the following four functions
- **/
 
 void compute_density_pressure( void )
 {
@@ -343,6 +317,3 @@ int main(int argc, char **argv)
     free(particles);
     return EXIT_SUCCESS;
 }
-
-
-// COMPILARE: gcc -std=c99 -Wall -Wpedantic -fopenmp omp-sph.c -o omp-sph -lm

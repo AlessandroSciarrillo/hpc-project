@@ -63,35 +63,21 @@ const float VISC = 200;         // viscosity constant
 const float DT = 0.0007;        // integration timestep
 const float BOUND_DAMPING = -0.5;
 
-// rendering projection parameters
-// (the following ought to be "const float", but then the compiler
-// would give an error because VIEW_WIDTH and VIEW_HEIGHT are
-// initialized with non-literal expressions)
-#ifdef GUI
-
-const int MAX_PARTICLES = 5000;
-#define WINDOW_WIDTH 1024
-#define WINDOW_HEIGHT 768
-
-#else
-
 const int MAX_PARTICLES = 20000;
+
 // Larger window size to accommodate more particles
 #define WINDOW_WIDTH 3000
 #define WINDOW_HEIGHT 2000
-
-#endif
 
 const int DAM_PARTICLES = 500;
 
 const float VIEW_WIDTH = 1.5 * WINDOW_WIDTH;
 const float VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
 
-/* Particle data structure; stores position, velocity, and force for
-   integration stores density (rho) and pressure values for SPH.
-
-   You may choose a different layout of the particles[] data structure
-   to suit your needs. */
+/**
+ * Particle data structure; stores position, velocity, and force for
+ * integration stores density (rho) and pressure values for SPH.
+ */
 typedef struct {
     float *x, *y;         // position
     float *vx, *vy;       // velocity
@@ -99,10 +85,12 @@ typedef struct {
     float *rho, *p;       // density, pressure
 } particles_t;
 
-int my_rank, comm_sz;
-int local_n, my_start;
-int *recvcounts, *displs;
 int n_particles = 0;    // number of currently active particles
+
+int my_rank, comm_sz;
+int local_n;
+int my_start, my_end;
+int *recvcounts, *displs;
 
 /**
  * Return a random value in [a, b]
@@ -141,13 +129,6 @@ int is_in_domain( float x, float y )
  * Initialize the SPH model with `n` particles. The caller is  <<<<<<      // TODO da cambiare
  * responsible for allocating the `particles[]` array of size
  * `MAX_PARTICLES`.
- *
- * DO NOT parallelize this function, since it calls rand() which is
- * not thread-safe.
- *
- * For MPI and OpenMP: only the master must initialize the domain;
- *
- * For CUDA: the CPU must initialize the domain.
  */
 void init_sph( int n, particles_t *particles )
 {
@@ -178,10 +159,7 @@ void compute_density_pressure( particles_t *p )
        et al. */ 
     const float POLY6 = 4.0 / (M_PI * pow(H, 8)); 
 
-    const int istart = n_particles*my_rank/comm_sz;
-    const int iend = n_particles*(my_rank+1)/comm_sz;
-
-    for (int i=istart; i<iend; i++) {
+    for (int i=my_start; i<my_end; i++) {
         p->rho[i] = 0.0;
         for (int j=0; j<n_particles; j++) {
             const float dx = p->x[j] - p->x[i];
@@ -205,10 +183,7 @@ void compute_forces( particles_t *p )
     const float VISC_LAP = 40.0 / (M_PI * pow(H, 5));
     const float EPS = 1e-6;
 
-    const int istart = n_particles*my_rank/comm_sz;
-    const int iend = n_particles*(my_rank+1)/comm_sz;
-
-    for (int i=istart; i<iend; i++) {
+    for (int i=my_start; i<my_end; i++) {
         float fpress_x = 0.0, fpress_y = 0.0;
         float fvisc_x = 0.0, fvisc_y = 0.0;
 
@@ -239,11 +214,8 @@ void compute_forces( particles_t *p )
 }
 
 void integrate( particles_t *p )
-{
-    const int istart = n_particles*my_rank/comm_sz;
-    const int iend = n_particles*(my_rank+1)/comm_sz;
-    
-    for (int i=istart; i<iend; i++) {
+{   
+    for (int i=my_start; i<my_end; i++) {
         // forward Euler integration
         p->vx[i] += DT * p->fx[i] / p->rho[i];
         p->vy[i] += DT * p->fy[i] / p->rho[i];
@@ -272,11 +244,8 @@ void integrate( particles_t *p )
 
 float avg_velocities( particles_t *p )
 {
-    const int istart = n_particles*my_rank/comm_sz;
-    const int iend = n_particles*(my_rank+1)/comm_sz;
-
     double my_result = 0.0;
-    for (int i=istart; i<iend; i++) {
+    for (int i=my_start; i<my_end; i++) {
         /* the hypot(x,y) function is equivalent to sqrt(x*x +
            y*y); */
         my_result += hypot(p->vx[i], p->vy[i]) / n_particles;
@@ -365,6 +334,7 @@ void compute_blocks()
     }
     local_n = recvcounts[my_rank];
     my_start = displs[my_rank];
+    my_end = my_start + recvcounts[my_rank];
 }
 
 float* alloc_maxp_length_array( void )
@@ -466,7 +436,3 @@ int main(int argc, char **argv)
 
     return EXIT_SUCCESS;
 }
-
-
-// mpicc -std=c99 -Wall -Wpedantic mpi-sph.c -o mpi-sph -lm
-// mpirun ./mpi-sph 20000 10
