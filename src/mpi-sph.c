@@ -100,6 +100,7 @@ typedef struct {
 } particles_t;
 
 int my_rank, comm_sz;
+int local_n, my_start;
 int *recvcounts, *displs;
 int n_particles = 0;    // number of currently active particles
 
@@ -167,10 +168,6 @@ void init_sph( int n, particles_t *particles )
     }
     assert(n_particles == n);
 }
-
-/**
- ** You may parallelize the following four functions
- **/
 
 void compute_density_pressure( particles_t *p )
 {
@@ -298,117 +295,43 @@ float avg_velocities( particles_t *p )
     return result;
 }
 
+void allgatherv_float_array( void *sendbuf, void *recvbuf)
+{
+    MPI_Allgatherv(
+        sendbuf, //const void *sendbuf, 
+        local_n, //int sendcount, 
+        MPI_FLOAT, //MPI_Datatype sendtype,
+        recvbuf, //void *recvbuf, 
+        recvcounts,//const int *recvcounts, 
+        displs,//const int *displs,
+        MPI_FLOAT, //MPI_Datatype recvtype, 
+        MPI_COMM_WORLD //MPI_Comm comm
+        );
+}
+
+
 void update( particles_t *particles )
 {
     // Bcast(x,y,vx,vy) fatta solo il primo gito
     compute_density_pressure(particles); 
-    
-    // Allgather(rho,p)
-    recvcounts = (int*)malloc(comm_sz * sizeof(*recvcounts)); assert(recvcounts != NULL);
-    displs = (int*)malloc(comm_sz * sizeof(*displs)); assert(displs != NULL);
-    for (int i=0; i<comm_sz; i++) {
-        const int istart = n_particles*i/comm_sz;
-        const int iend = n_particles*(i+1)/comm_sz;
-        const int blklen = iend - istart;
-        recvcounts[i] = blklen;
-        displs[i] = istart;
-    }
-    const int local_n = recvcounts[my_rank];
-    const int my_start = displs[my_rank];
 
-    MPI_Allgatherv(
-        &(particles->rho[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->rho, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
-    
-    MPI_Allgatherv(
-        &(particles->p[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->p, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
+    // Allgather(rho,p)
+    allgatherv_float_array( &(particles->rho[my_start]), particles->rho );
+    allgatherv_float_array( &(particles->p[my_start]), particles->p );
 
     compute_forces(particles);
 
     // Allgather(fx,fy)
-    MPI_Allgatherv(
-        &(particles->fx[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->fx, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
-    
-    MPI_Allgatherv(
-        &(particles->fy[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->fy, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
+    allgatherv_float_array( &(particles->fx[my_start]), particles->fx );
+    allgatherv_float_array( &(particles->fy[my_start]), particles->fy );
 
     integrate(particles);
 
     // Allgather(x,y,vx,vy)
-    MPI_Allgatherv(
-        &(particles->x[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->x, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
-    
-    MPI_Allgatherv(
-        &(particles->y[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->y, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
-    
-    MPI_Allgatherv(
-        &(particles->vx[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->vx, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
-    
-    MPI_Allgatherv(
-        &(particles->vy[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        particles->vy, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
-        );
+    allgatherv_float_array( &(particles->x[my_start]), particles->x );
+    allgatherv_float_array( &(particles->y[my_start]), particles->y );
+    allgatherv_float_array( &(particles->vx[my_start]), particles->vx );
+    allgatherv_float_array( &(particles->vy[my_start]), particles->vy );
 }
 
 void bcast_array_of_float( float *a)
@@ -427,6 +350,21 @@ void bcast_initial_values(particles_t *particles)
     bcast_array_of_float(particles->y);
     bcast_array_of_float(particles->vx);
     bcast_array_of_float(particles->vy);
+}
+
+void compute_blocks()
+{
+    recvcounts = (int*)malloc(comm_sz * sizeof(*recvcounts)); assert(recvcounts != NULL);
+    displs = (int*)malloc(comm_sz * sizeof(*displs)); assert(displs != NULL);
+    for (int i=0; i<comm_sz; i++) {
+        const int istart = n_particles*i/comm_sz;
+        const int iend = n_particles*(i+1)/comm_sz;
+        const int blklen = iend - istart;
+        recvcounts[i] = blklen;
+        displs[i] = istart;
+    }
+    local_n = recvcounts[my_rank];
+    my_start = displs[my_rank];
 }
 
 float* alloc_maxp_length_array( void )
@@ -503,6 +441,7 @@ int main(int argc, char **argv)
     MPI_Bcast(&nsteps, 1, MPI_INT, 0, MPI_COMM_WORLD); 
     MPI_Bcast(&n_particles, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
     bcast_initial_values(&particles);
+    compute_blocks();
 
     for (int s=0; s<nsteps; s++) {
         update(&particles);
