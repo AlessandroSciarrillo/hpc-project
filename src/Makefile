@@ -3,32 +3,34 @@
 #
 # Available targets:
 #
-# - sph: builds the non-GUI version (default)
+# - sph: builds serial version
 #
-# - sph.gui: builds the GUI version
+# - omp-sph: builds OpenMP version
 #
-# - all: builds both the GUI and non-GUI versions
+# - mpi-sph: builds MPI version
+#
+# - all: builds all three versions (default)
 #
 # - clean: clean up
 #
-# Last modified on 2022-11-27 by Moreno Marzolla
+# Last modified on 2023-03-08 by Alessandro Sciarrillo
 
-EXE:=sph sph.gui
+EXE:=sph omp-sph mpi-sph
 CFLAGS+=-std=c99 -Wall -Wpedantic
 LDLIBS=-lm
 
 .PHONY: clean
 
-sph: sph.c
+all: $(EXE) hpc.h
 
-gui: sph.gui
-
-all: $(EXE)
-
-sph.gui: CFLAGS+=-DGUI
-sph.gui: LDLIBS+=-lglut -lGL -lX11
-sph.gui: sph.c
+sph: sph.c hpc.h
 	$(CC) $(CFLAGS) $< $(LDLIBS) -o $@
+
+omp-sph: omp-sph.c hpc.h
+	$(CC) $(CFLAGS) -fopenmp $< $(LDLIBS) -o $@
+
+mpi-sph: mpi-sph.c hpc.h
+	mpicc $(CFLAGS) $< $(LDLIBS) -o $@
 
 clean:
 	\rm -f $(EXE) *.o *~

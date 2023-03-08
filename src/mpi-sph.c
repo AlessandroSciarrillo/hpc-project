@@ -295,13 +295,13 @@ float avg_velocities( particles_t *p )
     return result;
 }
 
-void allgatherv_float_array( void *sendbuf, void *recvbuf)
+void allgatherv_pv_array( float *pv_array)
 {
     MPI_Allgatherv(
-        sendbuf, //const void *sendbuf, 
+        &(pv_array[my_start]), //const void *sendbuf, 
         local_n, //int sendcount, 
         MPI_FLOAT, //MPI_Datatype sendtype,
-        recvbuf, //void *recvbuf, 
+        pv_array, //void *recvbuf, 
         recvcounts,//const int *recvcounts, 
         displs,//const int *displs,
         MPI_FLOAT, //MPI_Datatype recvtype, 
@@ -313,25 +313,25 @@ void allgatherv_float_array( void *sendbuf, void *recvbuf)
 void update( particles_t *particles )
 {
     // Bcast(x,y,vx,vy) fatta solo il primo gito
-    compute_density_pressure(particles); 
+    compute_density_pressure( particles ); 
 
     // Allgather(rho,p)
-    allgatherv_float_array( &(particles->rho[my_start]), particles->rho );
-    allgatherv_float_array( &(particles->p[my_start]), particles->p );
+    allgatherv_pv_array( particles->rho );
+    allgatherv_pv_array( particles->p );
 
-    compute_forces(particles);
+    compute_forces( particles );
 
     // Allgather(fx,fy)
-    allgatherv_float_array( &(particles->fx[my_start]), particles->fx );
-    allgatherv_float_array( &(particles->fy[my_start]), particles->fy );
+    allgatherv_pv_array( particles->fx );
+    allgatherv_pv_array( particles->fy );
 
-    integrate(particles);
+    integrate( particles );
 
     // Allgather(x,y,vx,vy)
-    allgatherv_float_array( &(particles->x[my_start]), particles->x );
-    allgatherv_float_array( &(particles->y[my_start]), particles->y );
-    allgatherv_float_array( &(particles->vx[my_start]), particles->vx );
-    allgatherv_float_array( &(particles->vy[my_start]), particles->vy );
+    allgatherv_pv_array( particles->x );
+    allgatherv_pv_array( particles->y );
+    allgatherv_pv_array( particles->vx );
+    allgatherv_pv_array( particles->vy );
 }
 
 void bcast_array_of_float( float *a)
