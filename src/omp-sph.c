@@ -1,7 +1,7 @@
 /****************************************************************************
  *
- * Alessandro Sciarrillo  
- * 0000970435
+ * [ Alessandro Sciarrillo  ]
+ * [ 0000970435             ]
  * 
  * sph.c -- Smoothed Particle Hydrodynamics
  *
@@ -31,14 +31,6 @@
  * SOFTWARE.
  *
  ****************************************************************************/
-#ifdef GUI
-#if __APPLE__
-#include <GLUT/glut.h>
-#else
-#include <GL/glut.h>
-#endif
-#endif
-
 #include "hpc.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,15 +55,14 @@ const float VISC = 200;         // viscosity constant
 const float DT = 0.0007;        // integration timestep
 const float BOUND_DAMPING = -0.5;
 const int MAX_PARTICLES = 20000;
+
 // Larger window size to accommodate more particles
 #define WINDOW_WIDTH 3000
 #define WINDOW_HEIGHT 2000
-
-
-const int DAM_PARTICLES = 500;
-
 const float VIEW_WIDTH = 1.5 * WINDOW_WIDTH;
 const float VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
+
+const int DAM_PARTICLES = 500;
 
 /** 
  * Particle data structure; stores position, velocity, and force for
@@ -153,6 +144,7 @@ void compute_density_pressure( void )
        et al. */
     const float POLY6 = 4.0 / (M_PI * pow(H, 8));
 
+// TODO schedule() ??
 #pragma omp parallel for default(none) shared(particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST)
     for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
@@ -298,7 +290,6 @@ int main(int argc, char **argv)
 
     init_sph(n);
 
-    
     tstart = hpc_gettime();
 
     for (int s=0; s<nsteps; s++) {

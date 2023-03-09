@@ -1,7 +1,7 @@
 /****************************************************************************
  *
- * Alessandro Sciarrillo  
- * 0000970435
+ * [ Alessandro Sciarrillo  ]
+ * [ 0000970435             ]
  * 
  * sph.c -- Smoothed Particle Hydrodynamics
  *
@@ -31,14 +31,6 @@
  * SOFTWARE.
  *
  ****************************************************************************/
-#ifdef GUI
-#if __APPLE__
-#include <GLUT/glut.h>
-#else
-#include <GL/glut.h>
-#endif
-#endif
-
 #include "hpc.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,11 +60,10 @@ const int MAX_PARTICLES = 20000;
 // Larger window size to accommodate more particles
 #define WINDOW_WIDTH 3000
 #define WINDOW_HEIGHT 2000
-
-const int DAM_PARTICLES = 500;
-
 const float VIEW_WIDTH = 1.5 * WINDOW_WIDTH;
 const float VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
+
+const int DAM_PARTICLES = 500;
 
 /**
  * Particle data structure; stores position, velocity, and force for
@@ -88,8 +79,8 @@ typedef struct {
 int n_particles = 0;    // number of currently active particles
 
 int my_rank, comm_sz;
-int local_n;
 int my_start, my_end;
+int local_n;
 int *recvcounts, *displs;
 
 /**
@@ -408,8 +399,8 @@ int main(int argc, char **argv)
         printf("Size: %d\n", comm_sz);
     }
 
-    MPI_Bcast(&nsteps, 1, MPI_INT, 0, MPI_COMM_WORLD); 
-    MPI_Bcast(&n_particles, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
+    MPI_Bcast( &nsteps, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
+    MPI_Bcast( &n_particles, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
     bcast_initial_values(&particles);
     compute_blocks();
 
