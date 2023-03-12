@@ -6,7 +6,7 @@ echo "----[ BENCHMARKS ]" > output.txt ;
 
 for i in {1..12}
 do
-    OMP_NUM_THREADS=$i ./omp-sph 1000 50 >> output.txt ;
+    OMP_NUM_THREADS=$i ./omp-sph 10000 20 >> output.txt ;
     echo -e " " >> output.txt;
 done
 

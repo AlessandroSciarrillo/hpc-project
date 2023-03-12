@@ -66,7 +66,7 @@ const float VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
 const int DAM_PARTICLES = 500;
 
 /**
- * Particle data structure; stores position, velocity, and force for
+ * Particles data structure (SoA); stores arrays of position, velocity, and force for
  * integration stores density (rho) and pressure values for SPH.
  */
 typedef struct {
@@ -117,9 +117,9 @@ int is_in_domain( float x, float y )
 }
 
 /**
- * Initialize the SPH model with `n` particles. The caller is  <<<<<<      // TODO da cambiare
- * responsible for allocating the `particles[]` array of size
- * `MAX_PARTICLES`.
+ * Initialize the SPH model with `n` particles. The caller is
+ * responsible for allocating an array for each variable in
+ * the particles structure of size `MAX_PARTICLES`.
  */
 void init_sph( int n, particles_t *particles )
 {
@@ -130,7 +130,6 @@ void init_sph( int n, particles_t *particles )
         for (float x = EPS; x <= VIEW_WIDTH * 0.8f; x += H) {
             if (n_particles < n) {
                 float jitter = rand() / (float)RAND_MAX;
-                //init_particle(particles + n_particles, x+jitter, y);
                 init_particle(particles, n_particles, x+jitter, y);
                 n_particles++;
             } else {
@@ -243,18 +242,24 @@ float avg_velocities( particles_t *p )
     }
 
     double result;
-    MPI_Allreduce(
+    MPI_Reduce(
         &my_result, //const void *sendbuf, 
         &result, //void *recvbuf, 
         1, //int count,
         MPI_DOUBLE, //MPI_Datatype datatype, 
         MPI_SUM, //MPI_Op op, 
+        0, //int root,
         MPI_COMM_WORLD //MPI_Comm comm
         );
 
     return result;
 }
 
+/**
+ * Call the MPI_Allgather() function to update the
+ * input array across all processes compounding
+ * the partial work done by each.
+ */
 void allgatherv_pv_array( float *pv_array)
 {
     MPI_Allgatherv(
@@ -272,28 +277,28 @@ void allgatherv_pv_array( float *pv_array)
 
 void update( particles_t *particles )
 {
-    // Bcast(x,y,vx,vy) fatta solo il primo gito
     compute_density_pressure( particles ); 
 
-    // Allgather(rho,p)
     allgatherv_pv_array( particles->rho );
     allgatherv_pv_array( particles->p );
 
     compute_forces( particles );
 
-    // Allgather(fx,fy)
     allgatherv_pv_array( particles->fx );
     allgatherv_pv_array( particles->fy );
 
     integrate( particles );
 
-    // Allgather(x,y,vx,vy)
     allgatherv_pv_array( particles->x );
     allgatherv_pv_array( particles->y );
     allgatherv_pv_array( particles->vx );
     allgatherv_pv_array( particles->vy );
 }
 
+/**
+ * Broadcast an array of float of length 'n_particles'
+ * from process 0 to all processes using MPI_Bcast().
+ */
 void bcast_array_of_float( float *a)
 {
     MPI_Bcast(
@@ -304,6 +309,10 @@ void bcast_array_of_float( float *a)
         MPI_COMM_WORLD ); 
 }
 
+/**
+ * Pass the x,y,vx,vy values of the particles
+ * from process 0 to all processes using MPI_Bcast().
+ */
 void bcast_initial_values(particles_t *particles)
 {
     bcast_array_of_float(particles->x);
@@ -312,6 +321,13 @@ void bcast_initial_values(particles_t *particles)
     bcast_array_of_float(particles->vy);
 }
 
+/**
+ * Calculate the split by number of particles between processes.
+ * Assign 'local_n' the number of particles the process is
+ * responsible for, assign 'my_start' and 'my_end' start and end
+ * indexes to work on arrays.
+ * Create respective 'recvcounts' and 'displs' for MPI functions.
+ */
 void compute_blocks()
 {
     recvcounts = (int*)malloc(comm_sz * sizeof(*recvcounts)); assert(recvcounts != NULL);
@@ -328,6 +344,10 @@ void compute_blocks()
     my_end = my_start + recvcounts[my_rank];
 }
 
+/**
+ * Allocates an array of float of size `MAX_PARTICLES`.
+ * Return the pointer.
+ */
 float* alloc_maxp_length_array( void )
 {
     float *a = (float*)malloc(MAX_PARTICLES * sizeof(float));
@@ -335,6 +355,10 @@ float* alloc_maxp_length_array( void )
     return a;
 }
 
+/**
+ * Allocates an array for each variable in
+ * the particles structure of size `MAX_PARTICLES`.
+ */
 void alloc_particles(particles_t *particles )
 {
     particles->x = alloc_maxp_length_array();
@@ -347,6 +371,10 @@ void alloc_particles(particles_t *particles )
     particles->p = alloc_maxp_length_array();
 }
 
+/**
+ * Free the memory of each array in the 
+ * particles structure.
+ */
 void free_particles( particles_t *particles)
 {
     free(particles->x);
@@ -394,12 +422,12 @@ int main(int argc, char **argv)
         }
 
         init_sph(n, &particles);
-        tstart = hpc_gettime();
-
         printf("Size: %d\n", comm_sz);
+
+        tstart = hpc_gettime();  
     }
 
-    MPI_Bcast( &nsteps, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
+    MPI_Bcast( &nsteps,      1, MPI_INT, 0, MPI_COMM_WORLD ); 
     MPI_Bcast( &n_particles, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
     bcast_initial_values(&particles);
     compute_blocks();

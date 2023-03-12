@@ -1,0 +1,36 @@
+----[ BENCHMARKS ]
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 2.186482e+01 seconds
+ 
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 1.160211e+01 seconds
+ 
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 8.557566e+00 seconds
+ 
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 6.612213e+00 seconds
+ 
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 5.537971e+00 seconds
+ 
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 4.871518e+00 seconds
+ 
+Initializing with 10000 particles
+step     0, avgV=111.944847
+step    10, avgV=1189.912598
+Elapsed time: 5.418169e+00 seconds
+ 

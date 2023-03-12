@@ -144,8 +144,7 @@ void compute_density_pressure( void )
        et al. */
     const float POLY6 = 4.0 / (M_PI * pow(H, 8));
 
-// TODO schedule() ??
-#pragma omp parallel for default(none) shared(particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST)
+#pragma omp parallel for default(none) shared(particles, n_particles, HSQ, MASS, POLY6, REST_DENS, GAS_CONST) schedule(static)
     for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
         pi->rho = 0.0;
@@ -174,7 +173,7 @@ void compute_forces( void )
     const float VISC_LAP = 40.0 / (M_PI * pow(H, 5));
     const float EPS = 1e-6;
 
-#pragma omp parallel for default(none) shared(particles, n_particles, MASS, SPIKY_GRAD, VISC, VISC_LAP, H, EPS, Gx, Gy)
+#pragma omp parallel for default(none) shared(particles, n_particles, MASS, SPIKY_GRAD, VISC, VISC_LAP, H, EPS, Gx, Gy) schedule(static)
     for (int i=0; i<n_particles; i++) {
         particle_t *pi = &particles[i];
         float fpress_x = 0.0, fpress_y = 0.0;
@@ -210,7 +209,7 @@ void compute_forces( void )
 
 void integrate( void )
 {
-#pragma omp parallel for default(none) shared(particles, n_particles, DT, EPS, BOUND_DAMPING, VIEW_WIDTH, VIEW_HEIGHT)
+#pragma omp parallel for default(none) shared(particles, n_particles, DT, EPS, BOUND_DAMPING, VIEW_WIDTH, VIEW_HEIGHT) schedule(static)
     for (int i=0; i<n_particles; i++) {
         particle_t *p = &particles[i];
         // forward Euler integration
@@ -243,7 +242,7 @@ float avg_velocities( void )
 {
     double result = 0.0;
 
-#pragma omp parallel for reduction(+:result) default(none) shared(particles, n_particles)
+#pragma omp parallel for reduction(+:result) default(none) shared(particles, n_particles) schedule(static)
     for (int i=0; i<n_particles; i++) {
         /* the hypot(x,y) function is equivalent to sqrt(x*x +
            y*y); */
@@ -289,6 +288,8 @@ int main(int argc, char **argv)
     }
 
     init_sph(n);
+
+    printf("Max threads:\t %d \n", omp_get_max_threads());
 
     tstart = hpc_gettime();
 
