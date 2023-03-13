@@ -288,9 +288,7 @@ int main(int argc, char **argv)
     }
 
     init_sph(n);
-
-    printf("Max threads:\t %d \n", omp_get_max_threads());
-
+    
     tstart = hpc_gettime();
 
     for (int s=0; s<nsteps; s++) {

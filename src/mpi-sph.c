@@ -92,7 +92,8 @@ float randab(float a, float b)
 }
 
 /**
- * Set initial position of particle `*p` to (x, y); initialize all
+ * Set the initial position of the particle at index 'index'
+ * in the structure of '*p' to (x, y); initialize all
  * other attributes to default values (zeros).
  */
 void init_particle( particles_t *p, int index, float x, float y )
@@ -243,13 +244,13 @@ float avg_velocities( particles_t *p )
 
     double result;
     MPI_Reduce(
-        &my_result, //const void *sendbuf, 
-        &result, //void *recvbuf, 
-        1, //int count,
-        MPI_DOUBLE, //MPI_Datatype datatype, 
-        MPI_SUM, //MPI_Op op, 
-        0, //int root,
-        MPI_COMM_WORLD //MPI_Comm comm
+        &my_result,     //const void *sendbuf
+        &result,        //void *recvbuf
+        1,              //int count
+        MPI_DOUBLE,     //MPI_Datatype datatype
+        MPI_SUM,        //MPI_Op op
+        0,              //int root
+        MPI_COMM_WORLD  //MPI_Comm comm
         );
 
     return result;
@@ -263,14 +264,14 @@ float avg_velocities( particles_t *p )
 void allgatherv_pv_array( float *pv_array)
 {
     MPI_Allgatherv(
-        &(pv_array[my_start]), //const void *sendbuf, 
-        local_n, //int sendcount, 
-        MPI_FLOAT, //MPI_Datatype sendtype,
-        pv_array, //void *recvbuf, 
-        recvcounts,//const int *recvcounts, 
-        displs,//const int *displs,
-        MPI_FLOAT, //MPI_Datatype recvtype, 
-        MPI_COMM_WORLD //MPI_Comm comm
+        &(pv_array[my_start]),  //const void *sendbuf
+        local_n,                //int sendcount
+        MPI_FLOAT,              //MPI_Datatype sendtype
+        pv_array,               //void *recvbuf
+        recvcounts,             //const int *recvcounts
+        displs,                 //const int *displs
+        MPI_FLOAT,              //MPI_Datatype recvtype
+        MPI_COMM_WORLD          //MPI_Comm comm
         );
 }
 
@@ -299,10 +300,10 @@ void update( particles_t *particles )
  * Broadcast an array of float of length 'n_particles'
  * from process 0 to all processes using MPI_Bcast().
  */
-void bcast_array_of_float( float *a)
+void bcast_array_of_float( float *bc_array)
 {
     MPI_Bcast(
-        a, 
+        bc_array, 
         n_particles, 
         MPI_FLOAT,
         0, 
@@ -422,13 +423,15 @@ int main(int argc, char **argv)
         }
 
         init_sph(n, &particles);
-        printf("Size: %d\n", comm_sz);
-
-        tstart = hpc_gettime();  
     }
 
     MPI_Bcast( &nsteps,      1, MPI_INT, 0, MPI_COMM_WORLD ); 
     MPI_Bcast( &n_particles, 1, MPI_INT, 0, MPI_COMM_WORLD ); 
+
+    if(0 == my_rank){
+        tstart = hpc_gettime();
+    }
+
     bcast_initial_values(&particles);
     compute_blocks();
 
