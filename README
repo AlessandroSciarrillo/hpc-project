@@ -36,11 +36,11 @@ Avendo a disposizione i file eseguibili è possibile lanciare i seguenti comandi
 
 * Per eseguire la versione OpenMP : 
     ```
-    ./omp-sph [N [S]]
+    OMP_NUM_THREADS=[numero thread] ./omp-sph [N [S]]
     ```
 * Per eseguire la versione MPI : 
     ```
-    mpirun ./mpi-sph [N [S]]
+    mpirun -n [numero processi] ./mpi-sph [N [S]]
     ```
 
 I parametri a disposizione sono:
