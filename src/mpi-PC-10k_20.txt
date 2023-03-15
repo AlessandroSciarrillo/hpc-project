@@ -1,0 +1,13 @@
+----[ BENCHMARKS ]
+Initializing with 10000 particles
+Elapsed time: 6.193416e+01 seconds
+Initializing with 10000 particles
+Elapsed time: 3.135804e+01 seconds
+Initializing with 10000 particles
+Elapsed time: 2.547308e+01 seconds
+Initializing with 10000 particles
+Elapsed time: 2.061445e+01 seconds
+Initializing with 10000 particles
+Elapsed time: 1.998027e+01 seconds
+Initializing with 10000 particles
+Elapsed time: 1.660960e+01 seconds

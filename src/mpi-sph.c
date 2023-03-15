@@ -235,14 +235,13 @@ void integrate( particles_t *p )
 
 float avg_velocities( particles_t *p )
 {
-    double my_result = 0.0;
+    double result, my_result = 0.0;
     for (int i=my_start; i<my_end; i++) {
         /* the hypot(x,y) function is equivalent to sqrt(x*x +
            y*y); */
         my_result += hypot(p->vx[i], p->vy[i]) / n_particles;
     }
 
-    double result;
     MPI_Reduce(
         &my_result,     //const void *sendbuf
         &result,        //void *recvbuf
@@ -442,8 +441,8 @@ int main(int argc, char **argv)
            if it is not shown (to ensure constant workload per
            iteration) */
         const float avg = avg_velocities(&particles);
-        if (s % 10 == 0 && 0 == my_rank)
-            printf("step %5d, avgV=%f\n", s, avg);
+        //if (s % 10 == 0 && 0 == my_rank)
+          //  printf("step %5d, avgV=%f\n", s, avg);
     }
   
     if(0 == my_rank){

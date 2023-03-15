@@ -297,8 +297,8 @@ int main(int argc, char **argv)
            if it is not shown (to ensure constant workload per
            iteration) */
         const float avg = avg_velocities();
-        if (s % 10 == 0)
-            printf("step %5d, avgV=%f\n", s, avg);
+        //if (s % 10 == 0)
+          //  printf("step %5d, avgV=%f\n", s, avg);
     }
 
     tfinish = hpc_gettime();
